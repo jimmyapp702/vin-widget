@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIN Lookup Widget</title>
-    <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -248,44 +247,31 @@
             loading.classList.add('show');
             decodeBtn.disabled = true;
 
-            const apiUrl = 'https://usavindecoder.com/api/json/decode/' + vin;
-
-            fetch(apiUrl)
+            fetch('https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/' + vin + '?format=json')
                 .then(response => response.json())
                 .then(data => {
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
 
-                    if (data && data.valid === true) {
-                        const make = data.manufacturer ? data.manufacturer.trim() : '';
-                        const model = data.model ? data.model.trim() : 'N/A';
-                        const year = data.year ? data.year.toString().trim() : 'N/A';
+                    if (data && data.Results && data.Results.length > 0) {
+                        const vehicleData = data.Results[0];
+                        const make = vehicleData.Make ? vehicleData.Make.trim() : '';
                         
                         if (!make) {
                             showError('Invalid VIN - No vehicle data found');
                             return;
                         }
 
+                        const model = vehicleData.Model ? vehicleData.Model.trim() : 'N/A';
+                        const year = vehicleData.ModelYear ? vehicleData.ModelYear.trim() : 'N/A';
+
                         document.getElementById('makeResult').textContent = make;
                         document.getElementById('modelResult').textContent = model;
                         document.getElementById('yearResult').textContent = year;
 
                         results.classList.add('show');
-
-                        setTimeout(function() {
-                            try {
-                                if (window.JotForm && typeof window.JotForm.setFieldValue === 'function') {
-                                    window.JotForm.setFieldValue('Truck Year', year);
-                                    window.JotForm.setFieldValue('Truck Make', make);
-                                    window.JotForm.setFieldValue('Truck Model', model);
-                                    window.JotForm.setFieldValue('Year/Make/Model', year + ' ' + make + ' ' + model);
-                                }
-                            } catch (e) {
-                                console.log('JotForm error:', e);
-                            }
-                        }, 100);
                     } else {
-                        showError('Invalid VIN - No vehicle data found');
+                        showError('Invalid VIN - No results found');
                     }
                 })
                 .catch(err => {
@@ -300,16 +286,6 @@
             error.textContent = '⚠ ' + message;
             error.classList.add('show');
         }
-
-        window.addEventListener('load', function() {
-            try {
-                if (window.JotForm && typeof window.JotForm.init === 'function') {
-                    window.JotForm.init();
-                }
-            } catch (e) {
-                console.log('JotForm init not available');
-            }
-        });
     </script>
 </body>
 </html>
