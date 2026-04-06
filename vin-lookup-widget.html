@@ -217,14 +217,12 @@
         const error = document.getElementById('error');
         const results = document.getElementById('results');
 
-        // Allow Enter key to decode
         vinInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 decodeVIN();
             }
         });
 
-        // Auto-format as uppercase
         vinInput.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
         });
@@ -234,11 +232,9 @@
         function decodeVIN() {
             const vin = vinInput.value.trim();
 
-            // Clear previous results
             error.classList.remove('show');
             results.classList.remove('show');
 
-            // Validate VIN
             if (!vin) {
                 showError('Please enter a VIN');
                 return;
@@ -249,26 +245,19 @@
                 return;
             }
 
-            // Show loading state
             loading.classList.add('show');
             decodeBtn.disabled = true;
 
-            // Call NHTSA API directly
             const apiUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`;
 
             fetch(apiUrl, {
                 method: 'GET',
+                mode: 'cors',
                 headers: {
                     'Accept': 'application/json'
-                },
-                mode: 'cors'
+                }
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
@@ -276,27 +265,22 @@
                     if (data.Results && data.Results.length > 0) {
                         const vehicleData = data.Results[0];
                         
-                        // Check if valid VIN was found
                         if (!vehicleData.Make || vehicleData.Make.trim() === '') {
                             showError('Invalid VIN - No vehicle data found');
                             return;
                         }
 
-                        // Populate results
                         document.getElementById('makeResult').textContent = vehicleData.Make || 'N/A';
                         document.getElementById('modelResult').textContent = vehicleData.Model || 'N/A';
                         document.getElementById('yearResult').textContent = vehicleData.ModelYear || 'N/A';
 
                         results.classList.add('show');
 
-                        // Send data to JotForm with your field names
                         try {
-                            // Populate individual fields
                             JotForm.setFieldValue('Truck Year', vehicleData.ModelYear || '');
                             JotForm.setFieldValue('Truck Make', vehicleData.Make || '');
                             JotForm.setFieldValue('Truck Model', vehicleData.Model || '');
                             
-                            // Populate combined field
                             const combinedValue = `${vehicleData.ModelYear || ''} ${vehicleData.Make || ''} ${vehicleData.Model || ''}`.trim();
                             JotForm.setFieldValue('Year/Make/Model', combinedValue);
                         } catch (e) {
@@ -309,7 +293,7 @@
                 .catch(err => {
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
-                    console.error('Fetch error:', err);
+                    console.error('Error:', err);
                     showError('Error connecting to NHTSA database. Please try again.');
                 });
         }
@@ -319,11 +303,10 @@
             error.classList.add('show');
         }
 
-        // Initialize JotForm widget
         try {
             JotForm.init();
         } catch (e) {
-            console.log('JotForm initialization skipped - not in JotForm context');
+            console.log('JotForm initialization skipped');
         }
     </script>
 </body>
