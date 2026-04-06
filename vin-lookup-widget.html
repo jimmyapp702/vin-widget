@@ -253,11 +253,22 @@
             loading.classList.add('show');
             decodeBtn.disabled = true;
 
-            // Call NHTSA API
+            // Call NHTSA API directly
             const apiUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`;
 
-            fetch(apiUrl)
-                .then(response => response.json())
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                mode: 'cors'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
@@ -298,8 +309,8 @@
                 .catch(err => {
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
+                    console.error('Fetch error:', err);
                     showError('Error connecting to NHTSA database. Please try again.');
-                    console.error('API Error:', err); 
                 });
         }
 
