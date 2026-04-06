@@ -248,44 +248,50 @@
             loading.classList.add('show');
             decodeBtn.disabled = true;
 
-            const apiUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`;
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+            const apiUrl = proxyUrl + 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/' + vin + '?format=json';
 
-            fetch(apiUrl, {
-                method: 'GET',
-                mode: 'cors',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            })
-                .then(response => response.json())
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network error');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
 
                     if (data.Results && data.Results.length > 0) {
                         const vehicleData = data.Results[0];
+                        const make = vehicleData.Make ? vehicleData.Make.trim() : '';
                         
-                        if (!vehicleData.Make || vehicleData.Make.trim() === '') {
+                        if (!make) {
                             showError('Invalid VIN - No vehicle data found');
                             return;
                         }
 
-                        document.getElementById('makeResult').textContent = vehicleData.Make || 'N/A';
-                        document.getElementById('modelResult').textContent = vehicleData.Model || 'N/A';
-                        document.getElementById('yearResult').textContent = vehicleData.ModelYear || 'N/A';
+                        const model = vehicleData.Model ? vehicleData.Model.trim() : 'N/A';
+                        const year = vehicleData.ModelYear ? vehicleData.ModelYear.trim() : 'N/A';
+
+                        document.getElementById('makeResult').textContent = make;
+                        document.getElementById('modelResult').textContent = model;
+                        document.getElementById('yearResult').textContent = year;
 
                         results.classList.add('show');
 
-                        try {
-                            JotForm.setFieldValue('Truck Year', vehicleData.ModelYear || '');
-                            JotForm.setFieldValue('Truck Make', vehicleData.Make || '');
-                            JotForm.setFieldValue('Truck Model', vehicleData.Model || '');
-                            
-                            const combinedValue = `${vehicleData.ModelYear || ''} ${vehicleData.Make || ''} ${vehicleData.Model || ''}`.trim();
-                            JotForm.setFieldValue('Year/Make/Model', combinedValue);
-                        } catch (e) {
-                            console.log('JotForm field mapping: ', e);
-                        }
+                        setTimeout(function() {
+                            try {
+                                if (window.JotForm && window.JotForm.setFieldValue) {
+                                    window.JotForm.setFieldValue('Truck Year', year);
+                                    window.JotForm.setFieldValue('Truck Make', make);
+                                    window.JotForm.setFieldValue('Truck Model', model);
+                                    window.JotForm.setFieldValue('Year/Make/Model', year + ' ' + make + ' ' + model);
+                                }
+                            } catch (e) {
+                                console.log('JotForm not available');
+                            }
+                        }, 100);
                     } else {
                         showError('Invalid VIN - No results found');
                     }
@@ -294,7 +300,7 @@
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
                     console.error('Error:', err);
-                    showError('Error connecting to NHTSA database. Please try again.');
+                    showError('Error connecting to VIN database. Please try again.');
                 });
         }
 
@@ -303,11 +309,15 @@
             error.classList.add('show');
         }
 
-        try {
-            JotForm.init();
-        } catch (e) {
-            console.log('JotForm initialization skipped');
-        }
+        window.addEventListener('load', function() {
+            try {
+                if (window.JotForm && window.JotForm.init) {
+                    window.JotForm.init();
+                }
+            } catch (e) {
+                console.log('JotForm init skipped');
+            }
+        });
     </script>
 </body>
 </html>
