@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIN Lookup Widget</title>
+    <script src="//js.jotform.com/JotFormCustomWidget.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: transparent;
+            padding: 20px;
+        }
+
+        .vin-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .vin-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        #vinInput {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: monospace;
+            text-transform: uppercase;
+        }
+
+        #vinInput:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        button {
+            padding: 10px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        button:active {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .results {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
+        }
+
+        .result-row:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .result-value {
+            font-weight: 600;
+            color: #1f2937;
+            text-align: right;
+        }
+
+        .error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .success-badge {
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="vin-container">
+        <div class="vin-header">Vehicle VIN Lookup</div>
+        
+        <div class="input-group">
+            <input 
+                type="text" 
+                id="vinInput" 
+                placeholder="Enter 17-digit VIN"
+                maxlength="17"
+            >
+            <button id="decodeBtn">Decode</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <span class="spinner"></span>Looking up VIN...
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results" id="results">
+            <div class="success-badge">✓ Valid VIN Found</div>
+            <div class="result-row">
+                <span class="result-label">Make</span>
+                <span class="result-value" id="makeResult">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Model</span>
+                <span class="result-value" id="modelResult">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Year</span>
+                <span class="result-value" id="yearResult">—</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const vinInput = document.getElementById('vinInput');
+        const decodeBtn = document.getElementById('decodeBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+
+        // Allow Enter key to decode
+        vinInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                decodeVIN();
+            }
+        });
+
+        // Auto-format as uppercase
+        vinInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+
+        decodeBtn.addEventListener('click', decodeVIN);
+
+        function decodeVIN() {
+            const vin = vinInput.value.trim();
+
+            // Clear previous results
+            error.classList.remove('show');
+            results.classList.remove('show');
+
+            // Validate VIN
+            if (!vin) {
+                showError('Please enter a VIN');
+                return;
+            }
+
+            if (vin.length !== 17) {
+                showError('VIN must be 17 characters');
+                return;
+            }
+
+            // Show loading state
+            loading.classList.add('show');
+            decodeBtn.disabled = true;
+
+            // Call NHTSA API
+            const apiUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    loading.classList.remove('show');
+                    decodeBtn.disabled = false;
+
+                    if (data.Results && data.Results.length > 0) {
+                        const vehicleData = data.Results[0];
+                        
+                        // Check if valid VIN was found
+                        if (!vehicleData.Make || vehicleData.Make.trim() === '') {
+                            showError('Invalid VIN - No vehicle data found');
+                            return;
+                        }
+
+                        // Populate results
+                        document.getElementById('makeResult').textContent = vehicleData.Make || 'N/A';
+                        document.getElementById('modelResult').textContent = vehicleData.Model || 'N/A';
+                        document.getElementById('yearResult').textContent = vehicleData.ModelYear || 'N/A';
+
+                        results.classList.add('show');
+
+                        // Send data to JotForm with your field names
+                        try {
+                            // Populate individual fields
+                            JotForm.setFieldValue('Truck Year', vehicleData.ModelYear || '');
+                            JotForm.setFieldValue('Truck Make', vehicleData.Make || '');
+                            JotForm.setFieldValue('Truck Model', vehicleData.Model || '');
+                            
+                            // Populate combined field
+                            const combinedValue = `${vehicleData.ModelYear || ''} ${vehicleData.Make || ''} ${vehicleData.Model || ''}`.trim();
+                            JotForm.setFieldValue('Year/Make/Model', combinedValue);
+                        } catch (e) {
+                            console.log('JotForm field mapping: ', e);
+                        }
+                    } else {
+                        showError('Invalid VIN - No results found');
+                    }
+                })
+                .catch(err => {
+                    loading.classList.remove('show');
+                    decodeBtn.disabled = false;
+                    showError('Error connecting to NHTSA database. Please try again.');
+                    console.error('API Error:', err); 
+                });
+        }
+
+        function showError(message) {
+            error.textContent = '⚠ ' + message;
+            error.classList.add('show');
+        }
+
+        // Initialize JotForm widget
+        try {
+            JotForm.init();
+        } catch (e) {
+            console.log('JotForm initialization skipped - not in JotForm context');
+        }
+    </script>
+</body>
+</html>
