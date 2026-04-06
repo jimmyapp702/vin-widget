@@ -247,39 +247,44 @@
             loading.classList.add('show');
             decodeBtn.disabled = true;
 
-            fetch('https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/' + vin + '?format=json')
-                .then(response => response.json())
-                .then(data => {
-                    loading.classList.remove('show');
-                    decodeBtn.disabled = false;
-
-                    if (data && data.Results && data.Results.length > 0) {
-                        const vehicleData = data.Results[0];
-                        const make = vehicleData.Make ? vehicleData.Make.trim() : '';
-                        
-                        if (!make) {
-                            showError('Invalid VIN - No vehicle data found');
-                            return;
-                        }
-
-                        const model = vehicleData.Model ? vehicleData.Model.trim() : 'N/A';
-                        const year = vehicleData.ModelYear ? vehicleData.ModelYear.trim() : 'N/A';
-
-                        document.getElementById('makeResult').textContent = make;
-                        document.getElementById('modelResult').textContent = model;
-                        document.getElementById('yearResult').textContent = year;
-
-                        results.classList.add('show');
-                    } else {
-                        showError('Invalid VIN - No results found');
+            const callbackName = 'vinCallback_' + Date.now();
+            window[callbackName] = function(data) {
+                loading.classList.remove('show');
+                decodeBtn.disabled = false;
+                
+                if (data && data.Results && data.Results.length > 0) {
+                    const vehicleData = data.Results[0];
+                    const make = vehicleData.Make ? vehicleData.Make.trim() : '';
+                    
+                    if (!make) {
+                        showError('Invalid VIN - No vehicle data found');
+                        return;
                     }
-                })
-                .catch(err => {
-                    loading.classList.remove('show');
-                    decodeBtn.disabled = false;
-                    console.error('Error:', err);
-                    showError('Error connecting to VIN database. Please try again.');
-                });
+
+                    const model = vehicleData.Model ? vehicleData.Model.trim() : 'N/A';
+                    const year = vehicleData.ModelYear ? vehicleData.ModelYear.trim() : 'N/A';
+
+                    document.getElementById('makeResult').textContent = make;
+                    document.getElementById('modelResult').textContent = model;
+                    document.getElementById('yearResult').textContent = year;
+
+                    results.classList.add('show');
+                } else {
+                    showError('Invalid VIN - No results found');
+                }
+                
+                delete window[callbackName];
+            };
+
+            const script = document.createElement('script');
+            script.src = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/' + vin + '?format=jsonp&callback=' + callbackName;
+            script.onerror = function() {
+                loading.classList.remove('show');
+                decodeBtn.disabled = false;
+                showError('Error connecting to VIN database. Please try again.');
+                delete window[callbackName];
+            };
+            document.body.appendChild(script);
         }
 
         function showError(message) {
