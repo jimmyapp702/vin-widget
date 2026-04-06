@@ -248,21 +248,15 @@
             loading.classList.add('show');
             decodeBtn.disabled = true;
 
-            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-            const apiUrl = proxyUrl + 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/' + vin + '?format=json';
+            const apiUrl = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/' + vin + '?format=json';
 
             fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network error');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     loading.classList.remove('show');
                     decodeBtn.disabled = false;
 
-                    if (data.Results && data.Results.length > 0) {
+                    if (data && data.Results && data.Results.length > 0) {
                         const vehicleData = data.Results[0];
                         const make = vehicleData.Make ? vehicleData.Make.trim() : '';
                         
@@ -282,14 +276,14 @@
 
                         setTimeout(function() {
                             try {
-                                if (window.JotForm && window.JotForm.setFieldValue) {
+                                if (window.JotForm && typeof window.JotForm.setFieldValue === 'function') {
                                     window.JotForm.setFieldValue('Truck Year', year);
                                     window.JotForm.setFieldValue('Truck Make', make);
                                     window.JotForm.setFieldValue('Truck Model', model);
                                     window.JotForm.setFieldValue('Year/Make/Model', year + ' ' + make + ' ' + model);
                                 }
                             } catch (e) {
-                                console.log('JotForm not available');
+                                console.log('JotForm error:', e);
                             }
                         }, 100);
                     } else {
@@ -311,11 +305,11 @@
 
         window.addEventListener('load', function() {
             try {
-                if (window.JotForm && window.JotForm.init) {
+                if (window.JotForm && typeof window.JotForm.init === 'function') {
                     window.JotForm.init();
                 }
             } catch (e) {
-                console.log('JotForm init skipped');
+                console.log('JotForm init not available');
             }
         });
     </script>
